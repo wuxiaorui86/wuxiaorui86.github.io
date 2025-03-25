@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频调音器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #333;
+        }
+
+        .audio-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #4CAF50;
+            background-color: #f8f8f8;
+        }
+
+        .upload-area.drag-over {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 20px;
+            -webkit-appearance: none;
+            background: #ddd;
+            outline: none;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .audio-info {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+        }
+
+        .visualizer {
+            width: 100%;
+            height: 100px;
+            background-color: #000;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .key-info {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f0f9ff;
+            border-radius: 4px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .key-info span {
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .key-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .key-display span {
+            color: #2196F3;
+            font-weight: bold;
+        }
+
+        .semitone-control {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            border: none;
+            background-color: #2196F3;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .control-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .semitone-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            min-width: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="audio-container">
+        <div class="upload-area" id="uploadArea">
+            <p>点击或拖拽音频文件到此处</p>
+            <input type="file" id="audioFile" accept="audio/*" style="display: none;">
+        </div>
+
+        <div class="audio-info" id="audioInfo">
+            未选择文件
+        </div>
+
+        <div class="key-info">
+            <div>调性: <span id="keyDisplay">未检测</span></div>
+        </div>
+
+        <canvas id="visualizer" class="visualizer"></canvas>
+
+        <div class="controls">
+            <audio id="audioPlayer" controls style="width: 100%;"></audio>
+            
+            <div class="slider-container">
+                <label>调性转换</label>
+                <div class="key-display">
+                    <span>原调: <span id="originalKey">未检测</span></span>
+                    <span>→</span>
+                    <span>目标调: <span id="targetKey">未检测</span></span>
+                </div>
+                <div class="semitone-control">
+                    <button class="control-btn" id="decreaseBtn">-1</button>
+                    <span class="semitone-value" id="semitoneValue">0</span>
+                    <button class="control-btn" id="increaseBtn">+1</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioContext;
+        let source;
+        let pitchNode;
+        let analyser;
+        let audioBuffer;
+        let isPlaying = false;
+        let originalKeyInfo = null; // 存储原始调性信息
+        let currentSemitones = 0;  // 移到全局作用域
+
+        const audioPlayer = document.getElementById('audioPlayer');
+        const decreaseBtn = document.getElementById('decreaseBtn');
+        const increaseBtn = document.getElementById('increaseBtn');
+        const semitoneValue = document.getElementById('semitoneValue');
+        const uploadArea = document.getElementById('uploadArea');
+        const audioFile = document.getElementById('audioFile');
+        const audioInfo = document.getElementById('audioInfo');
+        const visualizer = document.getElementById('visualizer');
+        const visualizerCtx = visualizer.getContext('2d');
+
+        // 添加音符频率映射
+        const NOTE_FREQUENCIES = {
+            'C': 261.63,
+            'C#': 277.18,
+            'D': 293.66,
+            'D#': 311.13,
+            'E': 329.63,
+            'F': 349.23,
+            'F#': 369.99,
+            'G': 392.00,
+            'G#': 415.30,
+            'A': 440.00,
+            'A#': 466.16,
+            'B': 493.88
+        };
+
+        // 事件监听器
+        uploadArea.addEventListener('click', async () => {
+            // 确保在用户交互时初始化音频上下文
+            if (!audioContext) {
+                await initAudioContext();
+            }
+            audioFile.click();
+        });
+        
+        audioFile.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // 修改初始化音频上下文函数
+        function initAudioContext() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                return Promise.resolve();
+            } catch (error) {
+                console.error('Failed to initialize audio context:', error);
+                return Promise.reject(error);
+            }
+        }
+
+        // 添加调性检测函数
+        function detectKey(audioBuffer) {
+            const fftSize = 32768; // 使用较大的FFT尺寸以获得更好的频率分辨率
+            const offlineContext = new OfflineAudioContext(1, audioBuffer.length, audioBuffer.sampleRate);
+            const source = offlineContext.createBufferSource();
+            const analyser = offlineContext.createAnalyser();
+            
+            analyser.fftSize = fftSize;
+            source.buffer = audioBuffer;
+            source.connect(analyser);
+            analyser.connect(offlineContext.destination);
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Float32Array(bufferLength);
+            const noteStrengths = new Array(12).fill(0);
+            
+            source.start();
+            
+            return offlineContext.startRendering().then(() => {
+                analyser.getFloatFrequencyData(dataArray);
+                
+                // 分析频谱能量分布
+                for (let i = 0; i < bufferLength; i++) {
+                    const frequency = i * audioBuffer.sampleRate / fftSize;
+                    const magnitude = Math.pow(10, dataArray[i] / 20);
+                    
+                    // 将频率映射到音高类别
+                    if (frequency > 0 && frequency < 2000) { // 只分析这个范围内的频率
+                        const noteNumber = 12 * Math.log2(frequency / 440) + 69;
+                        const pitchClass = Math.round(noteNumber) % 12;
+                        noteStrengths[pitchClass] += magnitude;
+                    }
+                }
+                
+                // 找出最强的音符
+                let maxStrength = 0;
+                let rootNote = 0;
+                noteStrengths.forEach((strength, index) => {
+                    if (strength > maxStrength) {
+                        maxStrength = strength;
+                        rootNote = index;
+                    }
+                });
+                
+                // 转换为音符名称
+                const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const rootNoteName = noteNames[rootNote];
+                
+                // 分析调性（大调/小调）
+                const majorThirdStrength = noteStrengths[(rootNote + 4) % 12];
+                const minorThirdStrength = noteStrengths[(rootNote + 3) % 12];
+                const keyType = majorThirdStrength > minorThirdStrength ? 'Major' : 'Minor';
+                
+                return {
+                    rootNote: rootNoteName,
+                    keyType: keyType,
+                    rootNoteIndex: rootNote
+                };
+            });
+        }
+
+        // 计算目标调性
+        function calculateTargetKey(originalKey, semitones) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const originalIndex = originalKey.rootNoteIndex;
+            let targetIndex = (originalIndex + semitones + 12) % 12;
+            const targetNote = noteNames[targetIndex];
+            return `${targetNote} ${originalKey.keyType === 'Major' ? '大调' : '小调'}`;
+        }
+
+        // 修改文件处理函数
+        async function handleFile(file) {
+            if (!file.type.startsWith('audio/')) {
+                alert('请选择音频文件！');
+                return;
+            }
+
+            // 确保音频上下文已经初始化
+            if (!audioContext) {
+                try {
+                    await initAudioContext();
+                } catch (error) {
+                    audioInfo.textContent = '音频系统初始化失败！';
+                    return;
+                }
+            }
+
+            audioInfo.textContent = `正在处理: ${file.name}`;
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                // 分析调性
+                originalKeyInfo = await detectKey(audioBuffer);
+                const keyText = `${originalKeyInfo.rootNote} ${originalKeyInfo.keyType === 'Major' ? '大调' : '小调'}`;
+                document.getElementById('keyDisplay').textContent = keyText;
+                document.getElementById('originalKey').textContent = keyText;
+                document.getElementById('targetKey').textContent = keyText;
+                
+                const url = URL.createObjectURL(file);
+                audioPlayer.src = url;
+                audioInfo.textContent = `已加载: ${file.name}`;
+                
+                setupAudioNodes();
+                
+                // 重置调性控制器
+                currentSemitones = 0;
+                updateKey(0);
+            } catch (error) {
+                console.error('Error processing audio file:', error);
+                audioInfo.textContent = '加载音频文件失败！';
+            }
+        }
+
+        // 设置音频节点
+        function setupAudioNodes() {
+            if (source) {
+                source.disconnect();
+            }
+
+            source = audioContext.createMediaElementSource(audioPlayer);
+            
+            const bufferSize = 4096;
+            pitchNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
+            
+            source.connect(pitchNode);
+            pitchNode.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            // 处理频率调节
+            let previousPhase = 0;
+            let currentPhase = 0;
+            
+            pitchNode.onaudioprocess = function(e) {
+                const input = e.inputBuffer.getChannelData(0);
+                const output = e.outputBuffer.getChannelData(0);
+                
+                // 获取当前半音数并转换为音分
+                const semitones = parseInt(semitoneValue.textContent);
+                const cents = semitones * 100;
+                
+                // 计算频率比
+                const frequencyRatio = Math.pow(2, cents / 1200);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    // 使用线性插值来调整频率
+                    currentPhase += frequencyRatio;
+                    
+                    if (currentPhase >= input.length) {
+                        currentPhase -= input.length;
+                    }
+                    
+                    const position = Math.floor(currentPhase);
+                    const fraction = currentPhase - position;
+                    
+                    // 使用线性插值获取样本值
+                    const currentSample = input[position];
+                    const nextSample = input[position + 1] || input[0];
+                    
+                    // 线性插值计算输出值
+                    output[i] = currentSample + fraction * (nextSample - currentSample);
+                }
+                
+                previousPhase = currentPhase;
+            };
+
+            drawVisualizer();
+        }
+
+        // 绘制可视化效果
+        function drawVisualizer() {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            visualizer.width = visualizer.clientWidth;
+            visualizer.height = visualizer.clientHeight;
+            
+            function draw() {
+                requestAnimationFrame(draw);
+                
+                analyser.getByteFrequencyData(dataArray);
+                
+                visualizerCtx.fillStyle = 'rgb(0, 0, 0)';
+                visualizerCtx.fillRect(0, 0, visualizer.width, visualizer.height);
+                
+                const barWidth = (visualizer.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+                
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = dataArray[i] / 2;
+                    
+                    const r = barHeight + 25;
+                    const g = 250;
+                    const b = 50;
+                    
+                    visualizerCtx.fillStyle = `rgb(${r},${g},${b})`;
+                    visualizerCtx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
+                    
+                    x += barWidth + 1;
+                }
+            }
+            
+            draw();
+        }
+
+        // 更新调性的函数
+        function updateKey(semitones) {
+            if (!originalKeyInfo) return;
+            
+            // 限制在 -6 到 6 的范围内
+            semitones = Math.max(-6, Math.min(6, semitones));
+            currentSemitones = semitones;  // 更新全局变量
+            
+            // 更新显示
+            semitoneValue.textContent = semitones > 0 ? `+${semitones}` : semitones;
+            
+            // 更新目标调性显示
+            const targetKey = calculateTargetKey(originalKeyInfo, semitones);
+            document.getElementById('targetKey').textContent = targetKey;
+            
+            // 更新音频处理参数
+            if (!document.getElementById('pitchValue')) {
+                const pitchValue = document.createElement('span');
+                pitchValue.id = 'pitchValue';
+                pitchValue.style.display = 'none';
+                document.body.appendChild(pitchValue);
+            }
+            document.getElementById('pitchValue').textContent = semitones * 100;
+            
+            // 更新按钮状态
+            decreaseBtn.disabled = semitones <= -6;
+            increaseBtn.disabled = semitones >= 6;
+        }
+
+        // 添加按钮事件监听器
+        decreaseBtn.addEventListener('click', () => {
+            updateKey(currentSemitones - 1);  // 使用全局变量
+        });
+
+        increaseBtn.addEventListener('click', () => {
+            updateKey(currentSemitones + 1);  // 使用全局变量
+        });
+    </script>
+</body>
+</html> 
